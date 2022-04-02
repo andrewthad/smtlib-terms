@@ -1,0 +1,52 @@
+There are several steps for parsing smtlib:
+
+1. S-Expressions. Easy, fairly standard stuff with smtlib's extensions.
+   Atoms are integers, decimal numbers, strings, lists. Quoted expressions
+   are not allowed.
+2. Syntax tree. Defined in Smtlib.Types. A straightforward interpretation
+   of the spec. This does not include commands since Z3 and CVC5 heavily
+   extend commands.
+3. Resolved. All function symbols and sorts are fully resolved. Arity is
+   checked. This is strange because users can define functions and sorts.
+   If there are user-defined functions (or sorts), we have two options:
+     1. In the case of dynamic functions, don't do this step at all.
+     2. In the case of statically-known functions, extend parsing to support
+        them. The types of such functions must be known.
+
+Design informed by:
+
+* Command: Two command types, one for Z3 and one for CVC5. The custom
+  commands (like CVC5's get-qe) are too important to ignore.
+* Logic: The logic in effect changes how things are parsed. Specifically,
+  sorts are restricted, and certain built-in functions are available.
+* User-defined functions. It's useful to support these, but these put
+  us in a weird situation concerning function application.
+
+So, how do we deal with this? Fortunately, we can have a vendor-neutral
+term type. Technically, there are extensions like Z3's bv2int, but I am
+comfortable ignoring these. Here is what I'm going with:
+
+sig Logic
+  type Constant, Sort
+  type Function : Nat -> Type
+  parseNumeral : Integer -> Maybe Constant
+  parseDecimal : Decimal -> Maybe Constant
+  parseFunction : ShortText -> exists n. Function n
+  encodeConstant : Constant -> Syntax
+  encodeFunction : Function n -> Syntax
+  fixity : Function -> Fixity
+module Term (Logic g)
+  type Term = ...
+  encodeTerm : Term -> Syntax
+sig Solver (Logic g)
+  type Command
+  encode : Command -> Syntax
+  decode : Syntax -> Command
+  reset : Command
+  setLogic : ShortText -> Command
+  assert : Term -> Command
+module Smtlib (Logic g, Command c)
+  type Command
+
+The user can extend Logic with their own user-defined types (either interpreted
+or uninterpreted). They can also extend Command.

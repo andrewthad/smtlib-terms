@@ -1,0 +1,54 @@
+{-# language DataKinds #-}
+{-# language KindSignatures #-}
+
+signature Smtlib.Logic where
+
+import Data.Kind (Type)
+import GHC.TypeNats (Nat)
+import Arithmetic.Types (WithNat)
+import Data.Text.Short (ShortText)
+import Data.Primitive (SmallArray)
+import Data.Type.Equality (TestEquality)
+import Smtlib.Function.Annotation (Annotation)
+
+import qualified Smtlib.Syntax as Syntax
+
+data Constant :: Type
+data Sort :: Type
+data Function :: Nat -> Type
+
+-- Index might not be needed.
+data Index :: Type
+
+instance Eq Constant
+instance Eq Sort
+instance Eq Index
+instance TestEquality Function
+
+instance Show Constant
+instance Show Sort
+instance Show Index
+instance Show (Function n)
+
+decodeNumeral :: Integer -> Maybe Constant
+decodeString :: ShortText -> Maybe Constant
+decodeFunction ::
+     SmallArray Syntax.Index -- indices
+  -> Maybe Syntax.Sort -- optional sort annotation
+  -> Int -- number of arguments function was applied to
+  -> ShortText -- function name
+  -> Maybe (WithNat Function)
+decodeSort :: Syntax.Sort -> Maybe Sort
+
+-- Index might not be needed.
+decodeIndex :: Syntax.Index -> Maybe Index
+
+functionAnnotation :: Function n -> Annotation n
+
+and :: Function 2
+true :: Constant
+false :: Constant
+isBool :: Sort -> Bool
+
+-- encodeConstant :: Constant -> Syntax.Constant
+-- encodeFunction :: Function n -> Syntax.QualIdentifier
